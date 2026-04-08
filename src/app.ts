@@ -8,6 +8,8 @@ const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 })    
 
+app.use(express.json());
+
 app.post("/generate", async(req,res) => {
         const completion = await client.chat.completions.create({
             model:"gpt-4o-mini",
@@ -16,20 +18,12 @@ app.post("/generate", async(req,res) => {
             messages: [
                 {
                     role: "developer",
-                    content: "Use emojis a cada 2 palavras. Gere um texto com no máximo uma frase."
+                    content: "Você é um assistente que gera histórias de uma frase. Use emojis a cada 2 palavras. Gere um texto com no máximo uma frase."
                 },
                 {
                     role: "user", //developer, assistant
-                    content: "Escreva uma mensagem de uma frase sobre hobbits",
+                    content: req.body.message,
                 },
-                {
-                    role: "assistant",
-                    content: "Os 🧙‍♂️ hobbits 🥔 são 🌿 criaturas 🏡 adoráveis que 🌈 amam a 🍵 simplicidade e 🌍 aventuras inesperadas!",
-                },
-                {
-                    role: "user",
-                    content: "Obrigado",
-                }
             ],
         });
 
