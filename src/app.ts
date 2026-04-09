@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv'
 import OpenAI from 'openai';
-import z from 'zod';
+import { z } from 'zod';
+import { zodResponseFormat } from 'openai/helpers/zod';
+
 dotenv.config();
 const app = express();
 
@@ -11,12 +13,16 @@ const client = new OpenAI({
 
 app.use(express.json());
 
+const schema = z.object({
+    produtos : z.array(z.string()),
+});
+
 app.post("/generate", async(req,res) => {
-        const completion = await client.chat.completions.create({
+    try{
+        const completion = await client.chat.completions.parse({
             model:"gpt-4o-mini",
             max_completion_tokens: 80,
-            //JSON_MODE
-            response_format: { type: 'json_object'},
+            response_format: zodResponseFormat(schema, 'produtos_schema'),
             //temperature: 0.2, //balanço entre determinismo x criativo de 0(determinista) a 2(criativo), 
             messages: [
                 {
@@ -30,20 +36,23 @@ app.post("/generate", async(req,res) => {
             ],
         });
 
-        const output = JSON.parse(completion.choices[0].message.content ?? "");
+        const output = completion.choices[0].message.parsed;
 
-        const schema = z.object({
-            produtos: z.array(z.string()),
-        })
-
-        const result = schema.safeParse(output);
-
-        if(!result.success){
+        if(!output){
             res.status(500).end();
             return;
         }
 
+        if(completion.choices[0].message.refusal){
+            res.status(400).json({error: 'Refusal'})
+        }
+
         res.json(output);
+}catch(e){
+    console.error(e);
+    res.status(500).json({error: 'Internal Server Error'})
+}
+
 })
 
 export default app;
